@@ -19,7 +19,7 @@ worldDepth = 20
 imageWidth = 64
 imageHeight = 64
 gendir = "gendir-%d" % os.getpid()
-numreflectors = 10
+numreflectors = 1
 
 ri = Image.open("reference.png")
 reference_image = ri.resize((imageWidth, imageHeight))
@@ -161,7 +161,10 @@ class reflectBox(MendelOrganism):
         sum_of_squares = sum(sq)
         diff = math.sqrt(sum_of_squares/float(image.size[0] * image.size[1]))
         diff = diff*diff   # Make differences big
-        return diff
+        radiussum=0
+        for o in range(numreflectors):
+            radiussum += 10.0*self["r_%d" % o]
+        return diff + radiussum
 
     ###########################################################################
     def fitness(self):
@@ -169,8 +172,6 @@ class reflectBox(MendelOrganism):
         pngfile = self.renderScene(povfile)
         fitness = self.analyseScene(pngfile)
         self.cleanup(povfile, pngfile)
-        for o in range(numreflectors):
-            fitness += (100.0*self["r_%d" % o])
         return fitness
 
     ###########################################################################
