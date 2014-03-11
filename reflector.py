@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import math
+from itertools import izip
 from pygene.population import Population
 from pygene.organism import MendelOrganism
 from pygene.gene import FloatGene
@@ -73,7 +74,7 @@ class depthGene(FloatGene):
 class radiusGene(FloatGene):
     mutProb = 0.05
     randMin = 0.5
-    randMax = 5.0
+    randMax = 10.0
 
     ###########################################################################
     def __repr__(self):
@@ -99,13 +100,10 @@ class widthGene(FloatGene):
 class reflectBox(MendelOrganism):
     genome = {}
     for i in range(numreflectors):
-        genome["x_%d" % i] = widthGene
-        genome["y_%d" % i] = heightGene
-        genome["z_%d" % i] = depthGene
         genome["r_%d" % i] = radiusGene
-        genome["cr_%d" % i] = colourGene
-        genome["cg_%d" % i] = colourGene
-        genome["cb_%d" % i] = colourGene
+        #genome["cr_%d" % i] = colourGene
+        #genome["cg_%d" % i] = colourGene
+        #genome["cb_%d" % i] = colourGene
 
     ###########################################################################
     def __repr__(self):
@@ -115,22 +113,25 @@ class reflectBox(MendelOrganism):
         str = ""
         str += '#include "colors.inc"\n'
         str += '#include "finish.inc"\n'
+        str += '#include "textures.inc"\n'
         str += 'camera { location <-0.5, -0.5, -0.5> look_at  <9, 9, 9> angle 90 }\n'
         str += 'global_settings { ambient_light White }\n'
-        str += 'light_source { <%s, %s, %s> color White }\n' % (-1+delta, -1+delta, -1+delta)
-        str += 'light_source { <%s, %s, %s> color White }\n' % (wwd, -1+delta, -1+delta)
-        str += 'light_source { <%s, %s, %s> color White }\n' % (wwd, -1+delta, worldDepth+delta)
-        str += 'light_source { <%s, %s, %s> color White }\n' % (wwd, worldHeight-delta, wdd)
-        str += 'plane { <0, 1, 0>, %s pigment { Black }  }\n' % (worldHeight+1)    # top
-        str += 'plane { <0, 1, 0>, -1 pigment { White }  }\n'   # bottom
-        str += 'plane { <1, 0, 0>, -1 pigment { Black }  }\n'  # left
-        str += 'plane { <1, 0, 0>, %s pigment { White }  }\n' % (worldWidth+1)   # right
-        str += 'plane { <0, 0, 1>, -1 pigment { Black }  }\n'  # front
-        str += 'plane { <0, 0, 1>, %s pigment { Yellow }  }\n' % (worldDepth+1)   # back
+        #str += 'light_source { <%s, %s, %s> color White }\n' % (-1+delta, -1+delta, -1+delta)
+        #str += 'light_source { <%s, %s, %s> color White }\n' % (wwd, -1+delta, -1+delta)
+        #str += 'light_source { <%s, %s, %s> color White }\n' % (wwd, -1+delta, worldDepth+delta)
+        #str += 'light_source { <%s, %s, %s> color White }\n' % (wwd, worldHeight-delta, wdd)
+        #str += 'plane { <0, 1, 0>, %s pigment { Black }  }\n' % (worldHeight+1)    # top
+        str += 'plane{ <1,0,0>, -2 texture{ pigment{ checker color rgb<1,1,1>*1.2 color rgb<0.25,0.15,0.1>*0} normal { bumps 0.75 scale 0.025} finish { phong 0.1}}}\n'
+        str += 'plane{ <0,1,0>, -2 texture{ pigment{ checker color rgb<1,1,1>*1.2 color rgb<0.1,0.25,0.15>*0} normal { bumps 0.75 scale 0.025} finish { phong 0.1}}}\n'
+        str += 'plane{ <0,0,1>, -2 texture{ pigment{ checker color rgb<1,1,1>*1.2 color rgb<0.1,0.15,0.25>*0} normal { bumps 0.75 scale 0.025} finish { phong 0.1}}}\n'
+        #str += 'plane { <1, 0, 0>, %s finish { reflection { 0.75 } ambient 0.1 }}\n' % (worldDepth+1) 
+        #str += 'plane { <1, 0, 0>, %s pigment { White }  }\n' % (worldWidth+1)   # right
+        #str += 'plane { <0, 0, 1>, -1 pigment { Black }  }\n'  # front
+        str += 'plane { <0, 0, 1>, %s finish { reflection { 0.75 } ambient 0.1 }}\n' % (worldDepth+1) 
         for o in range(numreflectors):
-            colour = "rgb <%f, %f, %f>" % (self["cr_%d" % o], self["cg_%d" % o], self["cb_%d" % o])
-            sphere = "sphere { <%f, %f, %f>, %f texture { pigment { color %s } }}\n" % \
-                (self["x_%d" % o], self["y_%d" % o], self["z_%d" % o], self["r_%d" % o], colour)
+            colour = "rgb <9.0, 0.0, 0.0>"
+            #colour = "rgb <%f, 0.0, 0.0>" % (self["cr_%d" % o], )
+            sphere = "sphere { <9.0, 9.0, 9.0>, %f texture { Polished_Chrome pigment {color %s } }}\n" % (self["r_%d" % o], colour)
             str += sphere
         return str
 
@@ -155,24 +156,23 @@ class reflectBox(MendelOrganism):
     def analyseScene(self, fname):
         # Lower fitness is better
         image = Image.open(fname)
-        diffimage = ImageChops.difference(reference_image, image)
-        h = diffimage.histogram()
-        sq = (value*(idx**2) for idx, value in enumerate(h))
-        sum_of_squares = sum(sq)
-        diff = math.sqrt(sum_of_squares/float(image.size[0] * image.size[1]))
-        diff = diff*diff   # Make differences big
+        pairs = izip(image.getdata(), reference_image.getdata())
+        dif = sum(abs(c1-c2) for p1,p2 in pairs for c1,c2 in zip(p1,p2))
         radiussum=0
         for o in range(numreflectors):
             radiussum += 10.0*self["r_%d" % o]
-        return diff + radiussum
+        return dif + radiussum
 
     ###########################################################################
     def fitness(self):
         povfile = self.generateScene()
         pngfile = self.renderScene(povfile)
-        fitness = self.analyseScene(pngfile)
+        ftn = self.analyseScene(pngfile)
         self.cleanup(povfile, pngfile)
-        return fitness
+        f=open('fitness.log','a')
+        f.write("%f,%f\n" % (self['r_0'], ftn))
+        f.close()
+        return ftn
 
     ###########################################################################
     def cleanup(self, *args):
