@@ -20,7 +20,7 @@ worldDepth = 20
 imageWidth = 64
 imageHeight = 64
 gendir = "gendir-%d" % os.getpid()
-numreflectors = 1
+numreflectors = 8
 
 ri = Image.open("reference.png")
 reference_image = ri.resize((imageWidth, imageHeight))
@@ -32,8 +32,8 @@ generation = 0
 ###############################################################################
 ###############################################################################
 class colourGene(FloatGene):
-    mutProb = 0.05
-    muyAmt = 0.01
+    mutProb = 0.10
+    mutAmt = 0.05
     randMin = 0.0
     randMax = 1.0
 
@@ -46,7 +46,7 @@ class colourGene(FloatGene):
 ###############################################################################
 ###############################################################################
 class heightGene(FloatGene):
-    mutProb = 0.05
+    mutProb = 0.10
     randMin = 0.0
     randMax = worldHeight
 
@@ -59,7 +59,7 @@ class heightGene(FloatGene):
 ###############################################################################
 ###############################################################################
 class depthGene(FloatGene):
-    mutProb = 0.05
+    mutProb = 0.10
     randMin = 0.0
     randMax = worldDepth
 
@@ -72,7 +72,7 @@ class depthGene(FloatGene):
 ###############################################################################
 ###############################################################################
 class radiusGene(FloatGene):
-    mutProb = 0.05
+    mutProb = 0.10
     randMin = 0.5
     randMax = 10.0
 
@@ -85,7 +85,7 @@ class radiusGene(FloatGene):
 ###############################################################################
 ###############################################################################
 class widthGene(FloatGene):
-    mutProb = 0.05
+    mutProb = 0.10
     randMin = 0.0
     randMax = worldWidth
 
@@ -100,10 +100,13 @@ class widthGene(FloatGene):
 class reflectBox(MendelOrganism):
     genome = {}
     for i in range(numreflectors):
+        genome["x_%d" % i] = widthGene
+        genome["y_%d" % i] = heightGene
+        genome["z_%d" % i] = depthGene
         genome["r_%d" % i] = radiusGene
-        #genome["cr_%d" % i] = colourGene
-        #genome["cg_%d" % i] = colourGene
-        #genome["cb_%d" % i] = colourGene
+        genome["cr_%d" % i] = colourGene
+        genome["cg_%d" % i] = colourGene
+        genome["cb_%d" % i] = colourGene
 
     ###########################################################################
     def __repr__(self):
@@ -129,9 +132,9 @@ class reflectBox(MendelOrganism):
         #str += 'plane { <0, 0, 1>, -1 pigment { Black }  }\n'  # front
         str += 'plane { <0, 0, 1>, %s finish { reflection { 0.75 } ambient 0.1 }}\n' % (worldDepth+1) 
         for o in range(numreflectors):
-            colour = "rgb <9.0, 0.0, 0.0>"
-            #colour = "rgb <%f, 0.0, 0.0>" % (self["cr_%d" % o], )
-            sphere = "sphere { <9.0, 9.0, 9.0>, %f texture { Polished_Chrome pigment {color %s } }}\n" % (self["r_%d" % o], colour)
+            colour = "rgb <%f, %f, %f>" % (self["cr_%d" % o], self["cg_%d" % o], self["cb_%d" % o])
+	    loc = "<%0.2f, %0.2f, %0.2f>, %f" % (self["x_%d" % o], self["y_%d" % o], self["z_%d" % o], self["r_%d" % o])
+            sphere = "sphere { %s texture { Polished_Chrome pigment {color %s } }}\n" % (loc, colour)
             str += sphere
         return str
 
@@ -169,9 +172,6 @@ class reflectBox(MendelOrganism):
         pngfile = self.renderScene(povfile)
         ftn = self.analyseScene(pngfile)
         self.cleanup(povfile, pngfile)
-        f=open('fitness.log','a')
-        f.write("%f,%f\n" % (self['r_0'], ftn))
-        f.close()
         return ftn
 
     ###########################################################################
