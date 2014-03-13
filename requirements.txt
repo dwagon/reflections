@@ -1,1 +1,2 @@
 git+https://github.com/blaa/PyGene.git
+PIL
